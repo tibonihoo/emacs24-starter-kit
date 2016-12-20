@@ -1,0 +1,160 @@
+#+TITLE: Thibauld Nion's emacs customisation for personal projects.
+#+OPTIONS: toc:2 num:nil ^:nil
+
+#+begin_src emacs-lisp
+  (unless (package-installed-p 'use-package)
+      (package-install  'use-package))
+  (setq use-package-always-ensure t)
+#+end_src
+
+
+* Personal info
+
+#+begin_src emacs-lisp
+  (set 'user-full-name "Thibauld Nion")
+  (set 'user-mail-address "thibauld@tibonihoo.net")
+#+end_src
+
+
+* Python
+
+Start off with the starter kit configuration for Python.
+
+#+begin_src emacs-lisp
+  (starter-kit-load "python")
+#+end_src
+
+Set-up my personnal coding conventions.
+#+begin_src emacs-lisp
+  (defun my/python-coding-conventions
+    (setq python-indent 2)
+    (setq indent-tabs-mode nil)
+    (setq python-guess-indent nil)
+  )
+  (add-hook 'python-mode-hook 'my/python-coding-conventions)
+#+end_src
+
+Define a few handy and still personal snippets to be used with
+Yasnippets.
+
+#+begin_src emacs-lisp
+  (defun my/python-snippets
+    (yas/define-snippets 
+      'python-mode
+      '(
+         ("tnc" "# `(user-login-name)`: NOCOMMIT" "Mark as uncommitable" nil)
+         ("tntd" "# `(user-login-name)`: TODO" "todo stamp" nil)
+         ("ncprint" "print $0 # `(user-login-name)`: NOCOMMIT" "no commit print" nil)
+         ("ptd" "pass # `(user-login-name)`: TODO" "Insert the default shebang for python "nil)
+         ("encoding" "# -*- coding: utf-8 -*- 
+  " "Set the file encoding" nil)
+         ("shebang" "#!/usr/bin/env python
+  " "Insert the default shebang for python "nil)
+       )
+     )
+  )
+  (add-hook 'python-mode-hook 'my/python-snippets)
+  (defun my/ac-python-mode-setup ()
+    (setq ac-sources (append '(ac-source-yasnippet) ac-sources))
+    )
+  (add-hook 'python-mode-hook 'my/ac-python-mode-setup)
+#+end_src
+
+Set-up flymake for onthe-fly python checking.
+#+begin_src emacs-lisp
+  (use-package flymake
+     :commands flymake-mode
+     :config
+     ;; Taken from http://plope.com/Members/chrism/flymake-mode
+     ;;
+     ;; works with http://pypi.python.org/pypi/pyflakes (v>3.0)
+     ;;
+     ;; The first stanza tells flymake to use pyflakes on .py files
+     ;; when in flymake-mode. The second tells emacs to always use
+     ;; flymake as a minor mode when loading buffers so I don't have
+     ;; to type "M-x flymake-mode" to get syntax checking when I load
+     ;; a buffer.
+     (defun flymake-pyflakes-init () 
+       (let* ((temp-file (flymake-init-create-temp-buffer-copy 
+                          'flymake-create-temp-inplace)) 
+              (local-file (file-relative-name 
+                           temp-file 
+                           (file-name-directory buffer-file-name)))) 
+         (list "pyflakes" (list local-file)))
+       )
+     (add-to-list 'flymake-allowed-file-name-masks 
+                  '("\\.py\\'" flymake-pyflakes-init))
+     )
+  (add-hook 'python-mode-hook 'flymake-mode)     
+#+end_src
+
+Search Python's web documentation for a given term (else you can still
+use C-c C-f should still give you some contextual doc).
+
+#+begin_src emacs-lisp
+  (defun my/python-search-www ()
+    "Launch web search"
+    (interactive)
+    (let* (
+           (userQuery
+            (read-from-minibuffer "Enter search term: "))
+           (escapedQuery 
+            (replace-regexp-in-string " " "+" userQuery))
+           (weburl 
+            (concat "http://docs.python.org/search.html?q=" escapedQuery))
+           )
+      (browse-url weburl)
+      )
+    )
+  (global-set-key (kbd "C-c ?") 'my/python-search-www)
+#+end_src
+
+A small Python utility to wrap a region in such a way that it will be
+marked as localizable in the Django framework.
+
+#+begin_src emacs-lisp
+  (defun my/django-wrap-trans (b e)
+    "Wrapper some text in the trans tag"
+    (interactive "r")
+    (save-restriction
+      (narrow-to-region b e)
+      (goto-char (point-min))
+      (insert "{% trans \"")
+      (goto-char (point-max))
+      (insert "\" %}")))
+  (global-set-key (kbd "C-c C-l") 'my/django-wrap-trans)
+#+end_src
+
+When imennu pops-up a hint about a function, I like seeing the
+arguments too.
+
+#+begin_src emacs-lisp
+  (setq py-imenu-show-method-args-p t)
+#+end_src
+
+Let me watch the various occurences of the symbol at point.
+#+begin_src emacs-lisp
+  (add-hook 'python-mode-hook 'idle-highlight)
+#+end_src
+
+I share the same so-so experience with pymacs and ropemacs as reporter
+in [[https://masteringemacs.org/article/jedi-completion-library-python][Mastering Emacs: Jedi, A completion library for Python]].
+
+#+begin_src emacs-lisp
+  (use-package jedi
+    :commands jedi:setup
+    :config 
+      (setq jedi:setup-keys t)
+   )
+  (add-hook 'python-mode-hook 'jedi:setup)
+#+end_src
+
+
+* Last but not least
+
+Load my common configuration.
+#+begin_src emacs-lisp
+  (let ((path (expand-file-name "tibonihoo-kit.org" starter-kit-dir)))
+       (org-babel-load-file path))
+#+end_src
+

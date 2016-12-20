@@ -1,0 +1,881 @@
+#+TITLE: Thibauld Nion's emacs customisation on top of the starter-kit's defaults.
+#+OPTIONS: toc:2 num:nil ^:nil
+
+This is my most usual additions to the [[file:starter-kit.org][Emacs Starter Kit]] inspired by a
+fair bit of other emacs configurations (including [[https://github.com/sachac/.emacs.d/blob/master/Sacha.org][Sacha Chua's emacs configuration]]).
+
+Since my emacs configuration is mad with org mode let's start by
+getting a decent org configuration with the starter kit for Org.
+
+#+begin_src emacs-lisp
+  (starter-kit-load "org")
+#+end_src
+
+
+* Prepare for clean package download and set-up
+  :PROPERTIES:
+  :CUSTOM_ID: use-package
+  :END:      
+
+'use-package.el' helps to keep the customization code related to each
+package cleanly packed with the package 'invocation'. If gently asked
+for (see the 'ensure' option below) it will also auto-load the package
+when it's not already present on the machine which spares us the need
+to doubly declare the packages we want to use.
+
+#+begin_src emacs-lisp
+  (unless (package-installed-p 'use-package)
+      (package-install  'use-package))
+  (setq use-package-always-ensure t)
+#+end_src
+
+
+* Varied OS/Desktop integration
+
+On OSX it often happens that Emacs and the shell don't share the same
+variables but this is fixable thanks to [[https://github.com/purcell/exec-path-from-shell][exec-path-from-shell package]].
+
+#+begin_src emacs-lisp
+  (use-package exec-path-from-shell
+    :if (eq system-type 'darwin)
+    :config (exec-path-from-shell-initialize)
+    )
+#+end_src
+
+Make commands like C-c C-x C-v work like in every other 'modern'
+application (ie copy, cut, paste) WHEN a region is active and behave
+emacs like else.
+#+begin_src emacs-lisp
+  (cua-mode t)
+#+end_src
+
+The typical F11 = full screen
+#+begin_src emacs-lisp
+  (global-set-key (kbd "<f11>") 'toggle-fullscreen)
+#+end_src
+
+I must confess that I'm not living all my life within emacs though I'm
+spending quite a lot of my (dev) life in it. So being able to trigger
+an external application or command taking the context of the current
+buffer into account is of a great help. This is actually quite easy to
+do by either opening a command or terminal window inside the current
+directory or by opening a file explorer on this same directory (which
+grant access to a range of file-type-specific applications and
+actions).
+
+#+begin_src emacs-lisp
+  ;;;###autoload
+  (defun my/command-on-current-directory ()
+    "Show an external (native) command line with the working directory set to current one."
+    (interactive)
+    (cond
+     ( (eq system-type 'windows-nt)
+       (w32-shell-execute "cmd on current directory" "cmd")
+       (message "Command on current directory with: cmd" )
+       )
+     ( (eq system-type 'darwin)
+       (start-process-shell-command "Terminal.app on current directory" nil  (concat "open -a Terminal " default-directory))
+       (message "Command on current directory with: open -a Terminal")
+       )
+     (t (let* (
+               (command  "gnome-terminal")
+               (change-directory-cmd
+                (concat
+                 "cd "
+                 (concat default-directory "/")
+                 )
+                )
+               (launcher (concat
+                          change-directory-cmd
+                          " && "
+                          command
+                          )
+                         )
+               )
+          (start-process-shell-command "Command on current directory" nil launcher nil)
+          (message (concat "Command on current directory with: " launcher))
+          )
+        )
+     )
+    )
+
+  ;;;###autoload
+  (defun my/explore-current-directory ()
+    "Show current directory in OS's explorer."
+    (interactive)
+    (let* (
+           (command   
+            (cond
+             ( (eq system-type 'windows-nt) "explorer")
+             ( (eq system-type 'darwin) "open" )
+             (t "nautilus")
+             )
+            )
+           (arguments 
+            (if (eq system-type 'windows-nt)
+                ;; converting back and forth the '\\' and "/" in order
+                ;; for expand-file-name to work and then for explorer to
+                ;; understand the path.
+                (replace-regexp-in-string "/" "\\\\" (expand-file-name (replace-regexp-in-string "\\\\" "/" default-directory )))
+              (concat default-directory "/")
+              )
+            )
+           )
+      (start-process-shell-command "Current directory exploration" nil 
+          			 command arguments)
+      (message (concat "Directory exploration with: " command " " arguments))
+      ))      
+#+end_src
+
+When using emacs to build something that I may want to test outside
+emacs (like a desktop or web app) I regularly need to switch from full
+screen and a smaller size. Using the traditional F11 makes for a
+better desktop integrations.
+
+#+begin_src emacs-lisp
+  (defun frame-set-fullscreen (&optional f)
+    "This function is called by toggle-fullscreen if the frame was previously in a 'custom' size.
+   
+  You can also make it so that this function is called directly when emacs starts by adding the following command to your initialisation file:
+   
+   ;; Set initialise frame size
+   (add-hook 'window-setup-hook 'frame-set-fullscreen t)
+  "
+    (interactive)
+    (if (not f)
+        (setq f (selected-frame))
+        )
+    ;; store the current width and height into the frame's variables
+    (set-frame-parameter f 'previous-width (frame-width f))
+    (set-frame-parameter f 'previous-height (frame-height f))
+    (cond
+     ( (eq system-type 'windows-nt)
+       ;; under Windows
+       (w32-send-sys-command #xf030) ;; from Windows WM_SYSCOMMAND : SC_MAXIMIZE
+       )
+     ( (memq window-system '(mac ns))
+       (progn ;; specific for a macbookpro of 2012
+         (set-frame-width f 202)
+         (set-frame-height f 53)
+         )
+       )
+     ( t
+       ;; default to internal method
+       (set-frame-parameter f 'fullscreen 'fullboth)
+       )
+     )
+    ;; This is a hack to get a flag that will also work on windows,
+    ;; hopefully it won't be needed for long.
+    (set-frame-parameter f 'is-fullscreen t)
+    )
+   
+  (defun frame-set-fullscreen-off (&optional f)
+    "This function is called by toggle-fullscreen if the frame was previously in a 'fullscreen' size.
+   
+  This should restore your frame to its previous size.
+   
+  Known bug: sometimes only one of the two dimensions gets restored.
+  "
+    (interactive)
+    (if (not f)
+        (setq f (selected-frame))
+      )
+    ;; First make sure to be out of the fullscren mode
+    (cond
+     ( (eq system-type 'windows-nt)
+       ;; under Windows
+       (w32-send-sys-command #xf120) ;; from Windows WM_SYSCOMMAND: SC_RESTORE
+       )
+     ( t
+       ;; default to internal method
+       (set-frame-parameter f 'fullscreen 'nil)
+       )
+     )
+    ;; see if some info is stored about previous sizes and restore them.
+    ;; NOTE: this seem to be a little buggy: maybe a synchronisation
+    ;; problem between the wm command to take effect and the execution
+    ;; of the following instruction ???
+    (when (assq 'previous-width (frame-parameters f))
+      (set-frame-width f (frame-parameter f 'previous-width)))
+    (when (assq 'previous-height (frame-parameters f))
+      (set-frame-height f (frame-parameter f 'previous-height)))
+    (when (assq 'is-fullscreen (frame-parameters f))
+      (set-frame-parameter f 'is-fullscreen nil)
+      )
+    )
+   
+  (defun frame-is-set-to-fullscreen (&optional f)
+    "Check wether the frame is fullscreen.
+  This function is here to take into account the hacks from frame-set-fullscreen"
+    (if (not f)
+        (setq f (selected-frame))
+      )
+    (or (frame-parameter f 'is-fullscreen) 
+        (frame-parameter f 'fullscreen))
+    )
+   
+   
+  (defun toggle-fullscreen (&optional f)
+    "Switch between the fullscreen and custom sized frames"
+    (interactive)
+    (if (not f)
+        (setq f (selected-frame))
+      )
+    (if (frame-is-set-to-fullscreen f) 
+        (frame-set-fullscreen-off f)
+      (frame-set-fullscreen f)
+      )
+    )
+#+end_src
+
+
+* Theme
+
+I choose a darker color theme to go easy on my eyes with the best fonts
+I could find to display code on each system.
+
+#+begin_src emacs-lisp
+  (use-package color-theme)
+  (use-package color-theme-tango
+    :config (color-theme-tango))
+
+  (cond 
+   ( (eq system-type 'windows-nt)
+     (set-face-attribute 'default nil :family "Consolas" :height 105)
+     )
+   ( (eq system-type 'darwin)
+     (set-face-attribute 'default nil :family "Menlo")
+     )
+   ( t
+     (set-face-attribute 'default nil :family "Monospace")
+    )
+   )
+#+end_src
+
+I hate it to spend more than an instant to see the full breadth of the
+line my cursor is in, so always highlighting this full line is a great help.
+
+#+begin_src emacs-lisp
+  (global-hl-line-mode)
+#+end_src
+ 
+When reading source code, I find it really useful if not plain life-saving to highlight some typical "code-smell" keywords.
+
+#+begin_src emacs-lisp
+  ;; Code adapted from Emacs manual (https://www.gnu.org/software/emacs/manual/html_node/emacs/Font-Lock.html)
+  (add-hook 'starter-kit-coding-hook
+     (lambda ()
+       (font-lock-add-keywords nil
+        '(("\\<\\(FIXME\\|TODO\\|NOCOMMIT\\|BUG\\)\\>" 1 font-lock-warning-face t)))))
+#+end_src
+
+I'd rather have the *scratch* buffer has some highlighting and
+functionalities of a powerful and still "generic" mode.
+
+#+begin_src emacs-lisp
+  (setq initial-major-mode 'org-mode)
+#+end_src
+
+Maximise the screen space available for buffers' content.
+
+#+begin_src emacs-lisp
+(when window-system
+  (tooltip-mode -1)
+  (tool-bar-mode -1)
+  (menu-bar-mode -1))
+#+end_src
+
+
+* Compilation and grep buffers interaction improvements
+
+When looking at compilation result I like quickly browing errors
+without the focus systematically jumping to corresponding buffer/line
+(which I find annoying), so I'm redefining navigation keys so that "n"
+and "p" don't "select" the corresponding error but the less immediate
+"N" and "P" do. The corresponding keys (like "a" and "A" for going to
+the first errors need also to be defined accordingly).
+
+#+begin_src emacs-lisp
+  ;; Strangely first-error exists without its "no-select" counter-part
+  ;; in simple.el, so defining it here with a gross copy paste from bits of simple.el.
+  (defun my/first-error-no-select (&optional n)
+    "Move point to the first error in the `next-error' buffer and highlight match.
+  Prefix arg N says how many error messages to move forwards (or
+  backwards, if negative).
+  Finds and highlights the source line like \\[next-error], but does not
+  select the source buffer."
+    (interactive "p")
+    (let ((next-error-highlight next-error-highlight-no-select))
+      (next-error n t))
+    (pop-to-buffer next-error-last-buffer))
+   
+   
+  ;; Compilation mode deserve the same handy kbd as grep
+  (defun my/compilation-key-bindings ()
+    "Just a few keybindings customisation for compilation mode"
+    (define-key compilation-mode-map "n" 'next-error-no-select)
+    (define-key compilation-mode-map "p" 'previous-error-no-select)
+    (define-key compilation-mode-map "a" 'my/first-error-no-select)
+    (define-key compilation-mode-map "N" 'next-error)
+    (define-key compilation-mode-map "P" 'previous-error)
+    (define-key compilation-mode-map "A" 'first-error)
+    (define-key compilation-mode-map (kbd "M-n") 'compilation-next-error)
+    (define-key compilation-mode-map (kbd "M-p") 'compilation-previous-error)
+  )
+  (add-hook 'compilation-mode-hook 'my/compilation-key-bindings)
+#+end_src  
+
+If, when compiling, there is no error then I really don't want to be
+disturbed by the compilation frame poping up, so I make sure to hide
+the compilation buffer in such case.
+
+#+begin_src emacs-lisp
+  ;; A little hack taken from
+  ;; https://www.emacswiki.org/emacs/ModeCompile#toc2 : "Automatically
+  ;; close the compilation buffer after a successful compilation"
+  (cons  
+    (lambda (buf str)
+       (if (string-match "exited abnormally" str)
+           ;;there were errors
+           (message "compilation errors.")
+         ;;no errors, make the compilation window go away in 0.5 seconds
+         (run-at-time 0.5 nil 'delete-windows-on buf)
+         (message "NO COMPILATION ERRORS!")
+         )
+       )
+    compilation-finish-functions
+      )
+#+end_src  
+
+When inspecting grep results I'd like to have a behaviour that is
+"grossly" consistent with the compilation result buffer, which also
+means making sure that "N" and "P" will pass the focus to the buffer
+of the next and previous matches.
+#+begin_src emacs-lisp
+  (defun my/grep-key-bindings ()
+    "Just a few keybindings customisation for grep mode"
+    (define-key	grep-mode-map "a" 'my/first-error-no-select)
+    (define-key	grep-mode-map "A" 'first-error)
+    (define-key	grep-mode-map "N" 'next-error)
+    (define-key	grep-mode-map "P" 'previous-error)
+    )
+  (add-hook 'grep-setup-hook 'my/grep-key-bindings)
+#+end_src
+
+Being able to directly edit grep matches and push back the result to
+the corresponding files' buffer is magic, and this magic has a name:
+wgrep. But don't forget to save the file buffers afterwards (my
+personnal technique: after exiting wgrep, I press "g" to re-run the
+grep commands which asks me to save the modified buffers).
+
+#+begin_src emacs-lisp
+  (use-package wgrep)
+#+end_src  
+
+
+* Window management
+
+I regularly end up having more windows than would be reasonable
+(typically 3-4 and more rarely even 5 or more). In such case moving to
+the other window with the usual "C-x o" is a bit tedious and thus the
+need for a few shortcuts to move to the window on the
+left/right/top/bottom of the current one.
+
+The spatial move are defined following vi-famous [[https://en.wikipedia.org/wiki/Arrow_keys#HJKL_keys][HJKL convention]]
+prefixed by M- and using capital letters to avoid too many conflicts.
+
+#+begin_src emacs-lisp
+  (use-package windmove
+    :config
+    (global-set-key (kbd "M-J") 'windmove-down)
+    (global-set-key (kbd "M-K") 'windmove-up)
+    (global-set-key (kbd "M-H") 'windmove-left)
+    (global-set-key (kbd "M-L") 'windmove-right)
+  )
+#+end_src
+
+In similar complex layouts of frames I like being able to resize the
+frames without moving my hands away from the keyboard. The keybinding
+for this are also based on the [[https://en.wikipedia.org/wiki/Arrow_keys#HJKL_keys][HJKL convention]] prefixed by C-
+and using capital letters to avoid too many conflicts.
+
+#+begin_src emacs-lisp
+  (defun my/window-height-increase ()
+    "Increase the height of the window by 5%"
+    (interactive)
+    (enlarge-window (max 1 (round (* .05 (window-height)))))
+    )
+   
+  (defun my/window-height-decrease ()
+    "Decrease the height of the window by 5%"
+    (interactive)
+    (enlarge-window (min -1 (round (* -.05 (window-width)))))
+    )
+   
+  (defun my/window-width-increase ()
+    "Increase the width of the window by 5%"
+    (interactive)
+    (enlarge-window-horizontally (max 1 (round (* .05 (window-width)))))
+    )
+   
+  (defun my/window-width-decrease ()
+    "Decrease the width of the window by 5%"
+    (interactive)
+    (enlarge-window-horizontally (min -1 (round (* -.05 (window-width)))))
+    )
+   
+  (defun my/window-height-small-increase ()
+    "Increase the height of the window by 1pix"
+    (interactive)
+    (enlarge-window 1)
+    )
+   
+  (defun my/window-height-small-decrease ()
+    "Decrease the height of the window by 1pix"
+    (interactive)
+    (enlarge-window -1)
+    )
+   
+  (defun my/window-width-small-increase ()
+    "Increase the width of the window by 1pix"
+    (interactive)
+    (enlarge-window-horizontally 1)
+    )
+   
+  (defun my/window-width-small-decrease ()
+    "Decrease the width of the window by 1pix"
+    (interactive)
+    (enlarge-window-horizontally -1)
+    )
+   
+  ;; Window size changes key bindings (using S-j instead of J as it
+  ;; doesn't seem to work with the C- prefix)
+  (global-set-key (kbd "C-S-j")   'my/window-height-increase)
+  (global-set-key (kbd "C-S-k")   'my/window-height-decrease)
+  (global-set-key (kbd "C-M-S-j") 'my/window-height-small-increase)
+  (global-set-key (kbd "C-M-S-k") 'my/window-height-small-decrease)
+  (global-set-key (kbd "C-S-h")   'my/window-width-increase)
+  (global-set-key (kbd "C-S-l")   'my/window-width-decrease)
+  (global-set-key (kbd "C-M-S-h") 'my/window-width-small-increase)
+  (global-set-key (kbd "C-M-S-l") 'my/window-width-small-decrease)
+#+end_src
+
+
+* Region manipulations
+
+Sometimes you have to break or bend the "don't repeat yourself"
+principle and in such times being able to duplicate blocks of code
+with a single key stroke avoids adding some physical strain to the
+moral pain.
+
+#+begin_src emacs-lisp
+  ;; Code adapted from http://stackoverflow.com/questions/88399/how-do-i-duplicate-a-whole-line-in-emacs/998472#998472
+  ;;;###autoload
+  (defun my/duplicate-line (arg)
+    "Duplicate current line, leaving point in lower line."
+    (interactive "*p")
+   
+    ;; save the point for undo
+    (setq buffer-undo-list (cons (point) buffer-undo-list))
+   
+    ;; local variables for start and end of line
+    (let ((bol (save-excursion (beginning-of-line) (point)))
+          eol)
+      (save-excursion
+   
+        ;; don't use forward-line for this, because you would have
+        ;; to check whether you are at the end of the buffer
+        (end-of-line)
+        (setq eol (point))
+   
+        ;; store the line and disable the recording of undo information
+        (let ((line (buffer-substring bol eol))
+              (buffer-undo-list t)
+              (count arg))
+          ;; insert the line arg times
+          (while (> count 0)
+            (newline)         ;; because there is no newline in 'line'
+            (insert line)
+            (setq count (1- count)))
+          )
+   
+        ;; create the undo information
+        (setq buffer-undo-list (cons (cons eol (point)) buffer-undo-list)))
+      ) ; end-of-let
+   
+    ;; put the point in the lowest line and return
+    (next-line arg))
+  (global-set-key (kbd "C-:") 'my/duplicate-line)
+#+end_src
+
+Sometimes the copy/paste is needed to quickly try variants of code,
+and thus commenting the original block of code at the same time is
+really handy.
+
+#+begin_src emacs-lisp
+  ;;;###autoload
+  (defun my/duplicate-comment-out (arg)
+    "Comment out and duplicate current line or region. If the
+    region is active and `transient-mark-mode' is on, the full
+    region will be duplicated, and the original region will be
+    commented out.  Else the same happen but only on current line."
+    (interactive "*P")
+    (if (and mark-active transient-mark-mode)
+        (progn
+          (let (
+                (original-region-begining (region-beginning))
+                (original-region-end (region-end))
+                )
+            (kill-region original-region-begining original-region-end)
+            (yank)
+            (yank)
+            (comment-region original-region-begining original-region-end)
+            )
+          )
+      (progn
+        (move-beginning-of-line arg)
+        (let ((beg (point)))
+          (move-end-of-line arg)
+          (comment-region beg (point))
+          )
+        (kill-whole-line)
+        (yank)
+        (yank)
+        (forward-line -1)
+        (let ((beg (point)))
+          (move-end-of-line arg)
+          (uncomment-region beg (point)))
+        )))
+  (global-set-key (kbd "C-;") 'my/duplicate-comment-out)   
+#+end_src  
+
+
+* Spelling correction
+
+Dictionary definitions for ispell for 2 languages and make sure the french dictionary is the default.
+
+#+begin_src emacs-lisp
+  (setq-default ispell-program-name "aspell")
+  (setq flyspell-default-dictionary "francais")
+  (defun my/dico-fr ()
+    "Switch ispell language to francais"
+    (interactive)
+    (ispell-change-dictionary "francais"))
+  (defun my/dico-en ()
+    "switch ispell language to british"
+    (interactive)
+    (ispell-change-dictionary "british"))
+#+end_src
+
+Set up a handy shortcut for fly-spell This way you have: C-, goto next
+mispelled word (default) M-o correct current word (instead of
+M-TAB)
+#+begin_src emacs-lisp
+  (global-set-key "\M-o" 'flyspell-auto-correct-word)
+#+end_src
+
+
+* Encodings
+
+#+begin_src emacs-lisp
+  (defun my/encode-string-to-hexa-c-chars (str &optional keepASCII)
+    "Encode a string into another string where each byte is
+  replaced by the exlicit notation of its hexadecimal code usable
+  in C programming language for characters (the notation begining
+  by '\\x').
+   
+  If keepASCII is non-nil then ASCII characters won't be converted,
+  even when these ASCII characters are actually part of the
+  decomposition of a single (multi-byte) character in the input string."
+    (mapconcat
+     (lambda (char) (if (and keepASCII (eq (char-charset char) 'ascii))
+                   (char-to-string char) (format "\\x%02X"  char)))
+     (string-to-list   (string-as-unibyte str))
+     ""))
+   
+   
+  (defun my/insert-string-as-hexa-c-chars (str &optional keepASCII)
+    "Given a string, will convert its chars to their c hexadecimal
+  representation and insert it in current buffer.
+   
+  If keepASCII is non-nil, ASCII characters will remain in the inserted string."
+    (interactive "sEncode and insert: ")
+    (insert (my/encode-string-to-hexa-c-chars str keepASCII))
+    )
+   
+  (defun my/insert-string-as-hexa-c-chars-keep-ascii (str)
+    "Just an alias to call insert-string-as-hexa-c-chars interactively
+  and keep ASCII characters in the output."
+    (interactive "sEncode and insert: ")
+    (my/insert-string-as-hexa-c-chars str t)
+    )
+   
+  (defun my/encode-region-to-hexa-c-chars (start end &optional keepASCII)
+    "Given a region, replace its content byt the string obtained
+  after convertion via encode-string-to-hexa-c-chars.
+   
+  If keepASCII is non-nil, ASCII characters will remain in the replacement string."
+    (interactive "*r")
+    (setq regionStr (buffer-substring start end))
+    (delete-region start end)
+    (goto-char start)
+    (my/insert-string-as-hexa-c-chars regionStr keepASCII)
+    )
+   
+  (defun my/encode-region-to-hexa-c-chars-keep-ascii (start end)
+    "Just an alias to call encode-region-to-hexa-c-chars interactively
+  and keep ASCII characters in the output."
+    (interactive "*r")
+    (my/encode-region-to-hexa-c-chars start end t)
+    )
+   
+  (defun my/comment-copy-encode-region-to-hexa-c-chars-keep-ascii (start end &optional keepASCII)
+    "Same as encode-region-to-hexa-c-chars-keep-ascii but keep
+  the original region in place and comment it out."
+    (interactive "*r")
+    (setq regionStr (buffer-substring start end))
+    (goto-char end)
+    (insert (my/encode-string-to-hexa-c-chars regionStr keepASCII))
+    (comment-region start end)
+    )
+   
+  (defun my/comment-copy-encode-region-to-hexa-c-chars-keep-ascii (start end)
+    "Just an alias to call comment-copy-encode-region-to-hexa-c-chars-keep-ascii interactively
+  and keep ASCII characters in the output."
+    (interactive "*r")
+    (my/comment-copy-encode-region-to-hexa-c-chars-keep-ascii start end t)
+    )
+#+end_src
+
+
+* IDO options
+
+Use ido for bookmarks too (taken from [[http://code.google.com/p/my-emacs-jasonal/source/browse/emacs-init/trunk/dot-emacs.el?r=1][Qichen Huang's dot-emacs]]).
+
+#+begin_src emacs-lisp
+  (defun my/ido-bookmark-jump (bookmark)
+    (interactive
+     (progn
+       (require 'bookmark)
+       (bookmark-maybe-load-default-file)
+       (list (ido-completing-read "Jump to bookmark: "
+                                  (mapcar 'car bookmark-alist)))))
+    (bookmark-jump bookmark))
+  (global-set-key (kbd "C-x r b") 'my/ido-bookmark-jump)
+#+end_src
+
+Sometimes the "unique" item is more of a typo and it happened to my
+often enough that I want to double confirm that (creation of a new
+buffer and then a new file may ensue).
+#+begin_src emacs-lisp
+  (setq ido-confirm-unique-completion t)
+#+end_src
+
+I usually want to be quick at finding a file or name and the fuzzy
+matching proved helpful in coping with the typo I make when in a hurry.
+#+begin_src emacs-lisp
+  (setq ido-enable-flex-matching t)
+#+end_src
+
+Disable matching on the merged list of directories (way too dangerous)
+#+begin_src emacs-lisp
+  (setq ido-auto-merge-work-directories-length nil)
+#+end_src
+
+Tell dired to suggest the path to another open dired buffer (if
+any) as default path for stuff like copy (sweeeeeet)
+#+begin_src emacs-lisp
+  (setq dired-dwim-target 1)
+#+end_src
+
+Show a dot to open a directory (keeps the usual emacs behaviour when opening a file)
+#+begin_src emacs-lisp
+  (setq ido-show-dot-for-dired t)
+#+end_src
+
+Automatically trying to look for filename at point is nice but tends
+to be triggered to often and ends up being disturbing. So we disable
+its automatic trigger and set up a new key binding.
+#+begin_src emacs-lisp
+  (setq ido-use-filename-at-point nil)
+  (global-set-key "\C-x\C-g" 'find-file-at-point)
+#+end_src
+
+
+* Eshell
+
+For some reason the starter-kit fails because of "Symbol's value as
+variable is void: eshell-output-filter-functions", so taking the
+configuration that most interest me here.
+
+#+begin_src emacs-lisp
+  (setq eshell-directory-name
+        (expand-file-name "./" (expand-file-name "eshell" starter-kit-dir)))
+#+end_src
+
+
+* Various keybindings
+
+Start eshell or switch to it if it's active. But allow creating a new one ayway.
+#+begin_src emacs-lisp
+  (global-set-key (kbd "C-x m") 'eshell)
+  (global-set-key (kbd "C-x M") (lambda () (interactive) (eshell t)))
+#+end_src
+
+Jump to a given line number
+#+begin_src emacs-lisp
+  (global-set-key "\M-g" 'goto-line)
+#+end_src
+
+When analizing the content of a file counting the number of occurence
+of a work can help. So I'm making it quick with a keyboard shortcut.
+#+begin_src emacs-lisp
+  ;;;###autoload
+  (defun my/count-symbol-at-point ()
+    "Count the number of occurences of the symbol at point, in the whole buffer"
+    (interactive)
+    (let ((target-symbol (word-at-point)))
+      (unless target-symbol (error "No symbol at point"))
+      (save-excursion
+        (goto-char (point-min))
+        (setq count (count-matches target-symbol))
+        (message "%d occurrence(s)" count (if (= count 1) "" "s"))
+        )
+    ))
+  (global-set-key (kbd "M-m") 'my/count-symbol-at-point)
+#+end_src
+
+
+I like the flymake navigation to share the same key bindings on
+all modes and flymake-cursor makes it possible to see flymake errors
+in the minibuffer.
+
+#+begin_src emacs-lisp
+  (use-package flymake
+    :commands flymake-mode
+    :config 
+      (add-hook 'flymake-mode-hook
+        '(lambda ()
+        (local-set-key (kbd "M-n") 'flymake-goto-next-error)
+        (local-set-key (kbd "M-p") 'flymake-goto-prev-error)
+        ))
+      (use-package flymake-cursor)
+    )
+#+end_src
+
+Being able to edit all the occurences of the word at point without
+going through a search and replace is pretty sweet.
+
+#+begin_src emacs-lisp
+  (use-package iedit
+    :init (custom-set-variables '(iedit-toggle-key-default (kbd "C-*")))
+    )
+#+end_src
+
+Make it so that a little help message pops up automatically when I
+don't quite remember the exact key sequence.
+
+#+begin_src emacs-lisp
+  (use-package guide-key
+    :init
+    (setq guide-key/guide-key-sequence '("C-x r" "C-x 4" "C-c"))
+    (guide-key-mode 1))  ; Enable guide-key-mode
+#+end_src
+
+Being able to paste whatever has been cut/copied and remains in the
+kill ring is powerful but what the kill-ring remembers, I precisely
+don't want to remember, so being able to see it on demand is great.
+
+#+begin_src emacs-lisp
+  (use-package browse-kill-ring
+    :init 
+    (progn 
+      (browse-kill-ring-default-keybindings) ;; M-y
+      (setq browse-kill-ring-quit-action 'save-and-restore)))    
+#+end_src
+
+
+* Completion enhancements (to be called last !)
+
+Auto-insertion of matching symbols.
+#+begin_src emacs-lisp
+  (setq skeleton-pair t)
+  (define-key global-map "(" 'skeleton-pair-insert-maybe)
+  (define-key global-map "[" 'skeleton-pair-insert-maybe)
+  (define-key global-map "{" 'skeleton-pair-insert-maybe)
+#+end_src  
+
+Lorem ipsum
+#+begin_src emacs-lisp
+  (defun my/lorem ()
+    "Insert a lorem ipsum."
+    (interactive)
+    (insert "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do "
+            "eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim"
+            "ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut "
+            "aliquip ex ea commodo consequat. Duis aute irure dolor in "
+            "reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla "
+            "pariatur. Excepteur sint occaecat cupidatat non proident, sunt in "
+            "culpa qui officia deserunt mollit anim id est laborum."))
+#+end_src
+
+I really like having the snippet offered by yasnippet pop-up in my
+completion lists.
+
+#+begin_src emacs-lisp
+  (starter-kit-load "yasnippet")
+#+end_src
+
+Live completion with [[http://cx4a.org/software/auto-complete/][auto-complete]].
+
+#+begin_src emacs-lisp
+(defun my/ac-eshell-mode-setup ()
+  (add-to-list 'ac-sources 'ac-source-files-in-current-dir))
+
+(use-package auto-complete
+  :config (progn 
+  (require 'auto-complete-config nil t)
+  (use-package ac-dabbrev)  
+  (global-auto-complete-mode t)
+  (setq ac-auto-start .5)
+  (setq ac-quick-help-delay 0.5)
+  ;; Do What I Mean mode
+  (setq ac-dwim t)
+  (ac-config-default)
+  ;; set also the completion for eshell  
+  (add-hook 'eshell-mode-hook 'my/ac-eshell-mode-setup)
+  ;; custom keybindings to use tab, enter and up and down arrows
+  (define-key ac-complete-mode-map "\t" 'ac-expand)
+  (define-key ac-complete-mode-map "\r" 'ac-complete)
+  (define-key ac-complete-mode-map "\M-n" 'ac-next)
+  (define-key ac-complete-mode-map "\M-p" 'ac-previous)
+  )
+)
+
+#+end_src
+
+Timing fixes to avoid slow downs.
+
+#+begin_src emacs-lisp
+  (setq ac-auto-start 3)
+  (setq ac-candidate-limit 20)
+  (setq ac-delay 0.5)
+  (setq semantic-idle-scheduler-idle-time 3)
+#+end_src  
+
+Use [[http://github.com/nonsequitur/smex/tree/master][smex]] as M-x improvement.
+
+#+begin_src emacs-lisp
+  (use-package smex
+   :config (progn
+     (global-set-key (kbd "M-x") 'smex)
+     (global-set-key (kbd "M-X") 'smex-major-mode-commands)
+     (global-set-key (kbd "C-c M-x") 'execute-extended-command)
+     ;; Warning:
+     ;; must always be called at last (registers all defined functions so far)
+     (smex-initialize)
+     ;; auto-update after every x-second-idle period
+     (smex-auto-update 3)
+     )
+  )
+#+end_src
