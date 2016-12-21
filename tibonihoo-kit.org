@@ -373,6 +373,112 @@ grep commands which asks me to save the modified buffers).
 #+end_src  
 
 
+* Eshell
+
+For some reason the starter-kit fails because of "Symbol's value as
+variable is void: eshell-output-filter-functions", so taking the
+configuration that most interest me here.
+
+#+begin_src emacs-lisp
+  (setq eshell-directory-name
+        (expand-file-name "./" (expand-file-name "eshell" starter-kit-dir)))
+#+end_src
+
+
+* C/C++
+
+Make sure what I set for "coding modes" is also activate for C/C++
+modes.
+#+begin_src emacs-lisp
+  (add-hook 'c-mode-common-hook 'run-starter-kit-coding-hook)
+#+end_src
+
+I like to be able to "fill" the comment paragraph and it seems telling
+that comment paragraphs start with either /* or // is necessary for that.x
+#+begin_src emacs-lisp
+  (defun my/fix-cc-comment-paragraph-detection ()
+    (setq c-paragraph-start "\\(//!\\|/*\\|^ * \\)")
+    )
+  (add-hook 'c-mode-common-hook 'my/fix-cc-comment-paragraph-detection)
+#+end_src
+
+In C/C++ we end up with a lot of "extra" spaces in some common coding
+styles: the line breaks and indents before the "}" for instance. To
+clean that up quickly when refactoring I like the hungry delete mode
+that allows to delete all contiguous blank spaces in one stroke.
+#+begin_src emacs-lisp
+  (add-hook 'c-mode-common-hook '(lambda () (c-toggle-hungry-state 1)))
+#+end_src
+
+Being able to jump around header and source files is a must with C/C++
+code, let's use sourcepair for that but extend a little the paths
+where it looks at.
+#+begin_src emacs-lisp
+  (use-package sourcepair
+    :ensure nil ; for some reason use-package only tries on remote repos if let to non-nil.
+    :commands sourcepair-load
+    :config
+      (setq sourcepair-recurse-ignore  
+        (append sourcepair-recurse-ignore '(".svn" ".hg" ".git" )))
+      (setq sourcepair-source-path  
+        (append sourcepair-source-path 
+          '("./src" "./source" 
+            "../src" "../source" 
+            "../../src ../../source" 
+            "../../../src" "../../../src")))
+      (setq sourcepair-header-path
+        (append sourcepair-header-path 
+          '("../"
+            "../include" "../inc"
+            "../../include" "../../inc"
+            "../../include/private" "../../inc/private")))
+  )
+  (add-hook 'c-mode-common-hook '(lambda () 
+    (define-key c-mode-base-map (kbd "C-c o") 'sourcepair-load)))
+#+end_src
+
+Large source files are unfortunately quite common in C/C++ project and
+being able to hide/show functions' content is helpful.
+
+#+begin_src emacs-lisp
+  (defun my/hideshow-setup ()
+    "Launch hide-show minor mode and setup custom bindings"
+    (hs-minor-mode t)
+    (define-key c-mode-base-map (kbd "C-c s") 'hs-show-block)
+    (define-key c-mode-base-map (kbd "C-c h") 'hs-hide-block)
+    (define-key c-mode-base-map (kbd "C-c H") 'hs-hide-all)
+    )
+  (add-hook 'c-mode-common-hook 'my/hideshow-setup)
+#+end_src
+
+And since some function can also themselves be very long having a
+little reminder on the mode line of the function we're in helps.
+#+begin_src emacs-lisp
+  (add-hook 'c-mode-common-hook 'which-function-mode)
+#+end_src
+
+The electric mode has always been of great help to ave a few
+keystrokes when formatting the code. Alas it's become a little anoying
+with the advent of initialization (aggregate lists) so I have to make
+sure the C-style I'm using include the following in the
+c-cleanup-list: defun-close-semi and list-close-comma.
+#+begin_src emacs-lisp
+  (add-hook 'c-mode-common-hook '(lambda () (c-toggle-auto-newline 1)))
+#+end_src
+
+In my user/machine-specific configuration I should also select the
+right style with something like the following (when uncommented).
+#+begin_src emacs-lisp
+;;  (add-hook 'c-mode-common-hook
+;;            '(lambda () 
+;;               ;; Use custom c/c++ style available in the load path
+;;               (require 'cc-do-style)
+;;               (do-style)))
+#+end_src
+
+If font lock is not up-to-date with modern versions of C++ I may also
+check packages like [[https://github.com/ludwigpacifici/modern-cpp-font-lock][Modern Cpp font lock]].
+
 * Window management
 
 I regularly end up having more windows than would be reasonable
@@ -699,18 +805,6 @@ its automatic trigger and set up a new key binding.
 #+begin_src emacs-lisp
   (setq ido-use-filename-at-point nil)
   (global-set-key "\C-x\C-g" 'find-file-at-point)
-#+end_src
-
-
-* Eshell
-
-For some reason the starter-kit fails because of "Symbol's value as
-variable is void: eshell-output-filter-functions", so taking the
-configuration that most interest me here.
-
-#+begin_src emacs-lisp
-  (setq eshell-directory-name
-        (expand-file-name "./" (expand-file-name "eshell" starter-kit-dir)))
 #+end_src
 
 
