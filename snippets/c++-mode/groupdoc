@@ -1,0 +1,9 @@
+# -*- mode: snippet -*-
+# name: Doxygen group documentation (C++)
+# key: groupdoc
+# --
+//! @addtogroup ${1:Brief description}.
+//! ${2:
+//! ${3:Detailed description}
+//! }
+//! @{

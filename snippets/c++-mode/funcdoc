@@ -1,0 +1,11 @@
+# -*- mode: snippet -*-
+# name: Function description (C++)
+# key: funcdoc
+# --
+//! ${1:Brief description}.
+//! ${2:
+//! ${3:Detailed description}
+//! 
+//! }@param ${4:param}
+//! @return ${5:return type}
+//!

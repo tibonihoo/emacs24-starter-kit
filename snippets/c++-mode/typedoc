@@ -1,0 +1,9 @@
+# -*- mode: snippet -*-
+# name: Type (struct, class, enum) description (C++)
+# key: typedoc
+# --
+//! ${1:Brief description}.
+//! ${2:
+//! ${3:Detailed description}
+//! }
+//!

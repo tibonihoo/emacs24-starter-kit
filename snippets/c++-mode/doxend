@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: Doxygen documentation end (C++)
+# key: docend
+# --
+//! @}

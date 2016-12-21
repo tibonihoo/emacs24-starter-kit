@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: Range via begin, end
+# key: rangeof
+# --
+${1:v}.begin(), $1.end()
