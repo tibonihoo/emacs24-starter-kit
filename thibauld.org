@@ -26,7 +26,7 @@ Start off with the starter kit configuration for Python.
 
 Set-up my personnal coding conventions.
 #+begin_src emacs-lisp
-  (defun my/python-coding-conventions
+  (defun my/python-coding-conventions ()
     (setq python-indent 2)
     (setq indent-tabs-mode nil)
     (setq python-guess-indent nil)
@@ -38,7 +38,7 @@ Define a few handy and still personal snippets to be used with
 Yasnippets.
 
 #+begin_src emacs-lisp
-  (defun my/python-snippets
+  (defun my/python-snippets ()
     (yas/define-snippets 
       'python-mode
       '(
@@ -141,12 +141,22 @@ I share the same so-so experience with pymacs and ropemacs as reporter
 in [[https://masteringemacs.org/article/jedi-completion-library-python][Mastering Emacs: Jedi, A completion library for Python]].
 
 #+begin_src emacs-lisp
-  (use-package jedi
-    :commands jedi:setup
-    :config 
-      (setq jedi:setup-keys t)
-   )
-  (add-hook 'python-mode-hook 'jedi:setup)
+  (defun my/jedi:setup ()
+    ;; a little trick here allows to know if we need to "install" jedi
+    ;; and in such case run the "install-server" that sets up the Python
+    ;; module of jedi.
+    (condition-case nil 
+      (require 'jedi)
+      (use-package jedi
+        :commands jedi:setup
+        :config 
+          (jedi:install-server)
+       )
+    )
+    (setq jedi:setup-keys t)
+    (jedi:setup)
+  )
+  (add-hook 'python-mode-hook 'my/jedi:setup)
 #+end_src
 
 
