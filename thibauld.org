@@ -160,6 +160,17 @@ in [[https://masteringemacs.org/article/jedi-completion-library-python][Masterin
 #+end_src
 
 
+* C/C++ personal style
+
+#+begin_src emacs-lisp
+ (add-hook 'c-mode-common-hook
+           '(lambda () 
+              ;; Use custom c/c++ style available in the load path
+              (require 'cc-morphee-style)
+              (morphee-style)))
+#+end_src
+
+
 * Last but not least
 
 Load my common configuration.
