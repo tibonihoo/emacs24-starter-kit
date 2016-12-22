@@ -479,6 +479,7 @@ right style with something like the following (when uncommented).
 If font lock is not up-to-date with modern versions of C++ I may also
 check packages like [[https://github.com/ludwigpacifici/modern-cpp-font-lock][Modern Cpp font lock]].
 
+
 * Window management
 
 I regularly end up having more windows than would be reasonable
