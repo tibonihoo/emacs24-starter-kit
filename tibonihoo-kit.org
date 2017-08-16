@@ -70,7 +70,7 @@ actions).
     (interactive)
     (cond
      ( (eq system-type 'windows-nt)
-       (w32-shell-execute "cmd on current directory" "cmd")
+       (w32-shell-execute "open" "cmd")
        (message "Command on current directory with: cmd" )
        )
      ( (eq system-type 'darwin)
@@ -103,15 +103,19 @@ actions).
   (defun my/explore-current-directory ()
     "Show current directory in OS's explorer."
     (interactive)
-    (let* (
+    (cond
+      ( (eq system-type 'windows-nt)
+	(w32-shell-execute "explore" ".")
+	(message "Explore current directory" )
+	)
+      (t (let* (
            (command   
             (cond
-             ( (eq system-type 'windows-nt) "explorer")
              ( (eq system-type 'darwin) "open" )
              (t "nautilus")
              )
             )
-           (arguments 
+           (arguments
             (if (eq system-type 'windows-nt)
                 ;; converting back and forth the '\\' and "/" in order
                 ;; for expand-file-name to work and then for explorer to
@@ -124,7 +128,9 @@ actions).
       (start-process-shell-command "Current directory exploration" nil 
           			 command arguments)
       (message (concat "Directory exploration with: " command " " arguments))
-      ))      
+      )
+   )
+  ))
 #+end_src
 
 When using emacs to build something that I may want to test outside
@@ -237,11 +243,12 @@ I could find to display code on each system.
 #+begin_src emacs-lisp
   (use-package color-theme)
   (use-package color-theme-tango
-    :config (color-theme-tango))
+    :config (color-theme-tango)
+    :ensure nil)
 
   (cond 
    ( (eq system-type 'windows-nt)
-     (set-face-attribute 'default nil :family "Consolas" :height 105)
+     (set-face-attribute 'default nil :family "Consolas" :height 125)
      )
    ( (eq system-type 'darwin)
      (set-face-attribute 'default nil :family "Menlo")
@@ -267,6 +274,10 @@ When reading source code, I find it really useful if not plain life-saving to hi
      (lambda ()
        (font-lock-add-keywords nil
         '(("\\<\\(FIXME\\|TODO\\|NOCOMMIT\\|BUG\\)\\>" 1 font-lock-warning-face t)))))
+(use-package idle-highlight-mode
+  :config 
+  (add-hook 'text-mode-hook 'idle-highlight-mode)
+  )
 #+end_src
 
 I'd rather have the *scratch* buffer has some highlighting and
