@@ -819,8 +819,32 @@ its automatic trigger and set up a new key binding.
   (global-set-key "\C-x\C-g" 'find-file-at-point)
 #+end_src
 
+Display completion candidates vertically.
+#+begin_src emacs-lisp
+  (use-package ido-vertical-mode
+    :init
+    (ido-vertical-mode 1)
+    :config
+    (setq ido-vertical-define-keys 'C-n-and-C-p-only)
+   )   
+#+end_src
+
 
 * Various keybindings
+
+Allow entering god-mode with M-s and after that (which means C-s s will trigger search).
+#+begin_src emacs-lisp
+  (use-package god-mode
+    :config
+    (global-set-key (kbd "M-s") 'god-local-mode)
+    (defun toggle-edit-noedit-cursor ()
+      (setq cursor-type (if (or god-local-mode buffer-read-only)
+                            'hollow
+                          'box)))
+    (add-hook 'god-mode-enabled-hook 'toggle-edit-noedit-cursor)
+    (add-hook 'god-mode-disabled-hook 'toggle-edit-noedit-cursor)
+   )
+#+end_src
 
 Start eshell or switch to it if it's active. But allow creating a new one ayway.
 #+begin_src emacs-lisp
