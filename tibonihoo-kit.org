@@ -965,7 +965,6 @@ Live completion with [[http://cx4a.org/software/auto-complete/][auto-complete]].
 (use-package auto-complete
   :config (progn 
   (require 'auto-complete-config nil t)
-  (use-package ac-dabbrev)  
   (global-auto-complete-mode t)
   (setq ac-auto-start .5)
   (setq ac-quick-help-delay 0.5)
