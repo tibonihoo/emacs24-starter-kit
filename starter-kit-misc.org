@@ -19,13 +19,7 @@ install them. Other dependencies are provided by Emacs 24.
 ** Color Themes
 Emacs24 has build in support for saving and loading themes.
 
-A Theme builder is available at http://elpa.gnu.org/themes/ along with
-a list of pre-built themes at http://elpa.gnu.org/themes/view.html and
-themes are available through ELPA.
-
-Downloaded themes may be saved to the =themes/= directory in the base
-of the starter kit which ignored by git.  Once downloaded and
-evaluated a theme is activated using the =load-theme= function.
+Themes are available as packages.
 
 ** Window systems
 #+srcname: starter-kit-window-view-stuff
@@ -44,7 +38,6 @@ evaluated a theme is activated using the =load-theme= function.
         font-lock-maximum-decoration t
         inhibit-startup-message t
         transient-mark-mode t
-        color-theme-is-global t
         delete-by-moving-to-trash t
         shift-select-mode nil
         truncate-partial-width-windows nil

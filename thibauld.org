@@ -54,10 +54,6 @@ Yasnippets.
      )
   )
   (add-hook 'python-mode-hook 'my/python-snippets)
-  (defun my/ac-python-mode-setup ()
-    (setq ac-sources (append '(ac-source-yasnippet) ac-sources))
-    )
-  (add-hook 'python-mode-hook 'my/ac-python-mode-setup)
 #+end_src
 
 Set-up flymake for onthe-fly python checking.

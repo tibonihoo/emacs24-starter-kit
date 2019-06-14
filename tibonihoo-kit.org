@@ -1,3 +1,4 @@
+
 #+TITLE: Thibauld Nion's emacs customisation on top of the starter-kit's defaults.
 #+OPTIONS: toc:2 num:nil ^:nil
 
@@ -70,7 +71,7 @@ actions).
     (interactive)
     (cond
      ( (eq system-type 'windows-nt)
-       (w32-shell-execute "open" "cmd")
+       (w32-shell-execute "open" "powershell")
        (message "Command on current directory with: cmd" )
        )
      ( (eq system-type 'darwin)
@@ -241,11 +242,8 @@ I choose a darker color theme to go easy on my eyes with the best fonts
 I could find to display code on each system.
 
 #+begin_src emacs-lisp
-  (use-package color-theme)
-  (use-package color-theme-tango
-    :config (color-theme-tango)
-    :ensure nil)
-
+  (use-package naquadah-theme)
+  
   (cond 
    ( (eq system-type 'windows-nt)
      (set-face-attribute 'default nil :family "Consolas" :height 125)
@@ -264,6 +262,8 @@ line my cursor is in, so always highlighting this full line is a great help.
 
 #+begin_src emacs-lisp
   (global-hl-line-mode)
+  (set-face-background 'hl-line "gray20" )
+  (set-cursor-color "gray90" )
 #+end_src
  
 When reading source code, I find it really useful if not plain life-saving to highlight some typical "code-smell" keywords.
@@ -296,6 +296,18 @@ Maximise the screen space available for buffers' content.
   (menu-bar-mode -1))
 #+end_src
 
+
+* Project support
+
+#+begin_src emacs-lisp
+(use-package projectile
+  :ensure t
+;;  :pin melpa-stable
+  :config
+;;  (define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)
+  (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
+  (projectile-mode +1))
+#+end_src  
 
 * Compilation and grep buffers interaction improvements
 
@@ -381,6 +393,7 @@ grep commands which asks me to save the modified buffers).
 
 #+begin_src emacs-lisp
   (use-package wgrep)
+  (grep-apply-setting 'grep-command "grep --color=always -nH --null -r ")
 #+end_src  
 
 
@@ -790,9 +803,19 @@ buffer and then a new file may ensue).
 #+end_src
 
 I usually want to be quick at finding a file or name and the fuzzy
-matching proved helpful in coping with the typo I make when in a hurry.
+matching proved helpful in coping with the typo I make when in a
+hurry. Also with some optmisation to the matching algorithm from
+flx-ido.
 #+begin_src emacs-lisp
   (setq ido-enable-flex-matching t)
+  (use-package flx-ido
+    :init
+    (flx-ido-mode 1)
+    :config
+    ;; disable ido faces to see flx highlights.
+    (setq ido-enable-flex-matching t)
+    (setq ido-use-faces nil)
+   )
 #+end_src
 
 Disable matching on the merged list of directories (way too dangerous)
@@ -876,23 +899,6 @@ of a work can help. So I'm making it quick with a keyboard shortcut.
 #+end_src
 
 
-I like the flymake navigation to share the same key bindings on
-all modes and flymake-cursor makes it possible to see flymake errors
-in the minibuffer.
-
-#+begin_src emacs-lisp
-  (use-package flymake
-    :commands flymake-mode
-    :config 
-      (add-hook 'flymake-mode-hook
-        '(lambda ()
-        (local-set-key (kbd "M-n") 'flymake-goto-next-error)
-        (local-set-key (kbd "M-p") 'flymake-goto-prev-error)
-        ))
-      (use-package flymake-cursor)
-    )
-#+end_src
-
 Being able to edit all the occurences of the word at point without
 going through a search and replace is pretty sweet.
 
@@ -956,31 +962,16 @@ completion lists.
   (starter-kit-load "yasnippet")
 #+end_src
 
-Live completion with [[http://cx4a.org/software/auto-complete/][auto-complete]].
+Live completion.
 
 #+begin_src emacs-lisp
-(defun my/ac-eshell-mode-setup ()
-  (add-to-list 'ac-sources 'ac-source-files-in-current-dir))
-
-(use-package auto-complete
-  :config (progn 
-  (require 'auto-complete-config nil t)
-  (global-auto-complete-mode t)
-  (setq ac-auto-start .5)
-  (setq ac-quick-help-delay 0.5)
-  ;; Do What I Mean mode
-  (setq ac-dwim t)
-  (ac-config-default)
-  ;; set also the completion for eshell  
-  (add-hook 'eshell-mode-hook 'my/ac-eshell-mode-setup)
-  ;; custom keybindings to use tab, enter and up and down arrows
-  (define-key ac-complete-mode-map "\t" 'ac-expand)
-  (define-key ac-complete-mode-map "\r" 'ac-complete)
-  (define-key ac-complete-mode-map "\M-n" 'ac-next)
-  (define-key ac-complete-mode-map "\M-p" 'ac-previous)
+  (use-package company
+    :config (progn
+      (define-key company-mode-map "<TAB>" 'company-complete)
+      (add-hook 'after-init-hook 'global-company-mode)
+      (global-set-key (kbd "C-c y") 'company-yasnippet)
+    )
   )
-)
-
 #+end_src
 
 Timing fixes to avoid slow downs.
