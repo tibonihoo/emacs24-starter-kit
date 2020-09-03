@@ -319,6 +319,12 @@ and "p" don't "select" the corresponding error but the less immediate
 the first errors need also to be defined accordingly).
 
 #+begin_src emacs-lisp
+  (use-package flycheck
+    :ensure t
+    :config
+    (global-flycheck-mode)
+  )
+
   ;; Strangely first-error exists without its "no-select" counter-part
   ;; in simple.el, so defining it here with a gross copy paste from bits of simple.el.
   (defun my/first-error-no-select (&optional n)
@@ -331,8 +337,8 @@ the first errors need also to be defined accordingly).
     (let ((next-error-highlight next-error-highlight-no-select))
       (next-error n t))
     (pop-to-buffer next-error-last-buffer))
-   
-   
+
+
   ;; Compilation mode deserve the same handy kbd as grep
   (defun my/compilation-key-bindings ()
     "Just a few keybindings customisation for compilation mode"
