@@ -56,6 +56,10 @@ Yasnippets.
   (add-hook 'python-mode-hook 'my/python-snippets)
 #+end_src
 
+#+begin_src emacs-lisp
+(add-hook 'python-mode-hook 'flycheck-mode)
+#+end_src
+
 Set-up flymake for onthe-fly python checking.
 #+begin_src emacs-lisp
   (use-package flymake
@@ -81,7 +85,7 @@ Set-up flymake for onthe-fly python checking.
      (add-to-list 'flymake-allowed-file-name-masks 
                   '("\\.py\\'" flymake-pyflakes-init))
      )
-  (add-hook 'python-mode-hook 'flymake-mode)     
+;  (add-hook 'python-mode-hook 'flymake-mode)     
 #+end_src
 
 Search Python's web documentation for a given term (else you can still
@@ -103,6 +107,8 @@ use C-c C-f should still give you some contextual doc).
       )
     )
   (global-set-key (kbd "C-c ?") 'my/python-search-www)
+
+
 #+end_src
 
 A small Python utility to wrap a region in such a way that it will be
@@ -130,29 +136,23 @@ arguments too.
 
 Let me watch the various occurences of the symbol at point.
 #+begin_src emacs-lisp
-  (add-hook 'python-mode-hook 'idle-highlight)
+  (add-hook 'python-mode-hook 'idle-highlight-in-visible-buffers-mode)
 #+end_src
 
 I share the same so-so experience with pymacs and ropemacs as reporter
 in [[https://masteringemacs.org/article/jedi-completion-library-python][Mastering Emacs: Jedi, A completion library for Python]].
 
 #+begin_src emacs-lisp
-  (defun my/jedi:setup ()
-    ;; a little trick here allows to know if we need to "install" jedi
-    ;; and in such case run the "install-server" that sets up the Python
-    ;; module of jedi.
-    (condition-case nil 
-      (require 'jedi)
-      (use-package jedi
-        :commands jedi:setup
-        :config 
-          (jedi:install-server)
-       )
-    )
-    (setq jedi:setup-keys t)
-    (jedi:setup)
-  )
-  (add-hook 'python-mode-hook 'my/jedi:setup)
+  (use-package lsp-jedi
+    :ensure t
+    :config
+    (with-eval-after-load "lsp-mode"
+      (add-to-list 'lsp-disabled-clients 'pyls)
+      (add-to-list 'lsp-enabled-clients 'jedi)
+      ))
+;;  (add-hook 'python-mode-hook 'lsp)
+
+  (use-package python-pytest)
 #+end_src
 
 
@@ -171,6 +171,11 @@ in [[https://masteringemacs.org/article/jedi-completion-library-python][Masterin
 
 Load my common configuration.
 #+begin_src emacs-lisp
+
+  (use-package direnv
+   :config
+   (direnv-mode))
+
   (let ((path (expand-file-name "tibonihoo-kit.org" starter-kit-dir)))
        (org-babel-load-file path))
 #+end_src

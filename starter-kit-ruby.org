@@ -97,7 +97,7 @@ Clear the compilation buffer between test runs.
 #+end_src
 
 #+begin_src emacs-lisp
-;; (add-hook 'ruby-mode-hook 'idle-highlight)
+;; (add-hook 'ruby-mode-hook 'idle-highlight-in-visible-buffers-mode)
 #+end_src emacs-lisp
 
 ** Flymake

@@ -242,7 +242,7 @@ I choose a darker color theme to go easy on my eyes with the best fonts
 I could find to display code on each system.
 
 #+begin_src emacs-lisp
-  (use-package naquadah-theme)
+;;  (use-package naquadah-theme)
   
   (cond 
    ( (eq system-type 'windows-nt)
@@ -255,6 +255,14 @@ I could find to display code on each system.
      (set-face-attribute 'default nil :family "Monospace")
     )
    )
+
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(company-tooltip ((t (:background "white" :foreground "black"))))
+ '(highlight ((t (:background "brightblack" :foreground "yellow")))))
 #+end_src
 
 I hate it to spend more than an instant to see the full breadth of the
@@ -274,9 +282,9 @@ When reading source code, I find it really useful if not plain life-saving to hi
      (lambda ()
        (font-lock-add-keywords nil
         '(("\\<\\(FIXME\\|TODO\\|NOCOMMIT\\|BUG\\)\\>" 1 font-lock-warning-face t)))))
-(use-package idle-highlight-mode
+(use-package idle-highlight-in-visible-buffers-mode
   :config 
-  (add-hook 'text-mode-hook 'idle-highlight-mode)
+  (add-hook 'text-mode-hook 'idle-highlight-in-visible-buffers-mode)
   )
 #+end_src
 

@@ -27,7 +27,7 @@ Java-script Helpers
 (add-hook 'espresso-mode-hook 'moz-minor-mode)
 (add-hook 'espresso-mode-hook 'turn-on-paredit)
 (add-hook 'espresso-mode-hook 'run-starter-kit-coding-hook)
-;; (add-hook 'espresso-mode-hook 'idle-highlight)
+;; (add-hook 'espresso-mode-hook 'idle-highlight-in-visible-buffers-mode)
 (setq espresso-indent-level 2)
 #+end_src
 
